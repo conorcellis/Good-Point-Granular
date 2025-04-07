@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Good Point Dot Animation</title>
+  <style>
+    body {
+      margin: 0;
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    canvas {
+      width: 1200px;
+      height: auto;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="dotCanvas" width="1200" height="400"></canvas>
+  <script>
+    const canvas = document.getElementById('dotCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const width = canvas.width;
+    const height = canvas.height;
+
+    const text = "Good Point";
+    const fontSize = 180;
+
+    function getTextImageData() {
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = width;
+      tempCanvas.height = height;
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCtx.fillStyle = '#000';
+      tempCtx.textAlign = 'center';
+      tempCtx.textBaseline = 'middle';
+      tempCtx.font = `bold ${fontSize}px sans-serif`;
+      tempCtx.fillText(text, width / 2, height / 2);
+      return tempCtx.getImageData(0, 0, width, height);
+    }
+
+    const textData = getTextImageData();
+    let time = 0;
+    let timeStep = 0.06; // Set default to fast speed
+
+    // Assign each letter a dynamic rate of change
+    const letterRates = {};
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      letterRates[char + i] = {
+        base: Math.random() * 0.5 + 0.5,
+        speed: Math.random() * 0.01 + 0.005,
+        offset: Math.random() * 1000
+      };
+    }
+
+    function getLetterIndexAt(x) {
+      const textMetrics = ctx.measureText(text);
+      const charWidth = textMetrics.width / text.length;
+      const startX = (width - textMetrics.width) / 2;
+      const index = Math.floor((x - startX) / charWidth);
+      return Math.max(0, Math.min(text.length - 1, index));
+    }
+
+    function drawFrame() {
+      ctx.clearRect(0, 0, width, height);
+      const spacing = 8;
+
+      for (let y = 0; y < height; y += spacing) {
+        for (let x = 0; x < width; x += spacing) {
+          const index = (Math.floor(y) * width + Math.floor(x)) * 4;
+          const alpha = textData.data[index + 3];
+
+          if (alpha > 128) {
+            const letterIndex = getLetterIndexAt(x);
+            const letterKey = text[letterIndex] + letterIndex;
+            const rate = letterRates[letterKey];
+            const localTime = time * rate.base + Math.sin(time * rate.speed + rate.offset) * 0.5;
+
+            const letterSeed = (x + y * width) * 0.0001;
+            const noise = Math.sin((x + localTime * 20 + letterSeed * 1000) * 0.01) +
+                          Math.cos((y + localTime * 30 + letterSeed * 2000) * 0.01);
+            const baseDotSize = 4;
+            const dotRange = 4.5;
+            const radius = baseDotSize + Math.sin(noise + localTime) * dotRange;
+
+            ctx.beginPath();
+            ctx.arc(x, y, Math.abs(radius), 0, 2 * Math.PI);
+            ctx.fillStyle = '#000';
+            ctx.fill();
+          }
+        }
+      }
+    }
+
+    function animate() {
+      drawFrame();
+      time += timeStep;
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+  </script>
+</body>
+</html>
